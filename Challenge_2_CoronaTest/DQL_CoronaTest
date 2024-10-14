@@ -1,0 +1,175 @@
+USE TestCorona -- Connecting to The DB 
+
+-- QUERY NUM 1 - Return the ID and first name of all residents.
+SELECT R.residentID, R.residentFirstName
+FROM Resident AS R
+
+
+-- QUERY NUM 2 - Return the ID numbers of residents who entered isolation.
+SELECT IOR.residentID
+FROM InsulationOfAResident AS IOR
+
+
+-- QUERY NUM 3 - Return all the details of businesses stored in the system.
+SELECT *
+FROM Business
+
+
+-- QUERY NUM 4 - Return the ID, full name, and age of residents who registered in the system.
+SELECT R.residentID, R.residentFirstName + ' ' + R.residentSurName AS 'Residnt FullName', DATEDIFF(YEAR,R.residentBirthDate, GETDATE()) AS 'AGE'
+FROM Resident AS R
+
+
+-- QUERY NUM 5 - Return the ID numbers of residents currently in isolation.
+SELECT IOR.residentID
+FROM InsulationOfAResident AS IOR
+WHERE IOR.EndDateTime IS NULL
+
+
+-- QUERY NUM 6 - Return the business numbers visited by a sick person in the last 30 days. 
+SELECT SRVB.businessNum
+FROM SickResidentVisitsInBusiness AS SRVB
+WHERE DATEDIFF(DAY,SRVB.visitStartDateTime, GETDATE()) <= 1400  -- Modify it to 1400 beacause of the dates in the DB.
+
+
+-- QUERY NUM 7 - Return the ID numbers of sick residents who recovered within less than two weeks.
+SELECT SR.residentID
+FROM SickResident as SR INNER JOIN InsulationOfAResident AS IOR ON SR.residentID = IOR.residentID
+WHERE SR.status = 'R' AND DATEDIFF(DAY, IOR.StartDateTime, IOR.EndDateTime) <= 14
+
+
+-- QUERY NUM 8 - Return the ID numbers of residents whose last name starts with 'b' and ends with 'r'.
+SELECT R.residentID, R.residentSurName
+FROM Resident AS R
+WHERE R.residentSurName LIKE 'b%r'
+
+
+-- QUERY NUM 9 - Return the details of male residents born in the 1990s.
+SELECT *
+FROM Resident AS R
+WHERE R.gender = 'M' AND YEAR(R.residentBirthDate) BETWEEN 1990 AND 1999
+
+
+-- QUERY NUM 10 - Return the ID numbers of residents who entered isolation on April 1st, 2021, or April 10th, 2021.
+SELECT IOR.residentID
+FROM InsulationOfAResident AS IOR 
+WHERE IOR.StartDateTime = '2021-04-01' OR IOR.StartDateTime = '2021-04-10'
+
+--#2 Solution
+SELECT IOR.residentID
+FROM InsulationOfAResident AS IOR 
+WHERE IOR.StartDateTime  IN ('2021-04-01','2021-04-10')
+
+
+-- QUERY NUM 11 - Return the ID numbers of residents who did not enter isolation on April 1st or April 10th, 2021.
+SELECT IOR.residentID
+FROM InsulationOfAResident AS IOR 
+WHERE IOR.StartDateTime NOT IN ('2021-04-01','2021-04-10')
+
+
+-- QUERY NUM 12 - Return the ID numbers of residents who are currently sick or in isolation.
+SELECT IOR.residentID
+FROM InsulationOfAResident AS IOR
+WHERE IOR.EndDateTime IS NULL 
+UNION							--We use UNION, Because the result of the JOIN will be records that exist in both tables ONLY.
+SELECT SR.residentID
+FROM SickResident AS SR 
+WHERE SR.status = 'S'
+
+
+-- QUERY NUM 13 - Return the business numbers of businesses within 1,500 meters of another business.
+SELECT N.businessNum1
+FROM Near AS N
+WHERE distance <= 1500
+UNION					-- UNION -> NO DUPLICATES
+SELECT N.businessNum2
+FROM Near AS N
+WHERE distance <= 1500
+
+
+-- QUERY NUM 14 - Write a query that returns the ID numbers and full names of sick residents.
+SELECT SR.residentID, R.residentFirstName + ' ' + R.residentSurName AS 'FullName', DATEDIFF(YEAR, R.residentBirthDate, GETDATE()) AS 'AGE'
+FROM SickResident AS SR INNER JOIN Resident AS R ON R.residentID = SR.residentID
+WHERE SR.status = 'S'
+
+
+-- QUERY NUM 15 - Write a query that returns the birth year of people living in Haifa.
+SELECT DATEDIFF(YEAR, R.residentBirthDate, GETDATE()) AS 'AGE'
+FROM Resident AS R INNER JOIN city AS C ON R.citynum = C.cityNum
+WHERE C.cityName = 'Haifa'   -- LIKE works also
+
+-- QUERY NUM 16 - Write a query that returns the birth year of the oldest resident in Haifa.
+SELECT MIN(YEAR(R.residentBirthDate))
+FROM Resident AS R INNER JOIN city AS C ON R.citynum = C.cityNum
+WHERE C.cityName = 'Haifa'
+
+--#2 SOLUTION
+SELECT TOP 1 YEAR(R.residentBirthDate)
+FROM Resident AS R INNER JOIN city AS C ON R.citynum = C.cityNum
+WHERE C.cityName = 'Haifa'
+ORDER BY R.residentBirthDate ASC
+
+
+/* QUERY NUM 17 - Write a query that returns details of residents (ID, full name, and age) 
+who entered isolation in the last three days and either have finished isolation or have a 
+test result of 20 or less and are still in isolation.*/
+
+SELECT R.residentID, R.residentFirstName + ' ' + R.residentSurName AS	
+	 'FullName', DATEDIFF(YEAR, R.residentBirthDate, GETDATE()) AS 'AGE'
+FROM Resident AS R INNER JOIN InsulationOfAResident AS IOR ON R.residentID = IOR.residentID		
+	 INNER JOIN SickResidentTracking AS SRT ON SRT.residentID = IOR.residentID
+WHERE (DATEDIFF(DAY, IOR.StartDateTime, GETDATE()) <= 3800 AND IOR.EndDateTime IS NOT NULL)
+OR (SRT.result <= 20 AND IOR.EndDateTime IS NULL)
+
+
+-- QUERY NUM 15 - Return the ID, full name, and age of residents who were in isolation and also got out and also were sick.
+SELECT R.residentID, R.residentFirstName + ' ' + R.residentSurName AS	
+     'FullName', DATEDIFF(YEAR, R.residentBirthDate, GETDATE()) AS 'AGE'
+FROM Resident AS R INNER JOIN InsulationOfAResident AS IOR ON R.residentID = IOR.residentID	INNER JOIN SickResident	
+	AS SR ON SR.residentID = IOR.residentID
+WHERE IOR.EndDateTime IS NOT NULL
+
+
+-- QUERY NUM 16 - Return the ID, full name, and age of residents who were in isolation after being sick.
+SELECT R.residentID, R.residentFirstName + ' ' + R.residentSurName AS	
+     'FullName', DATEDIFF(YEAR, R.residentBirthDate, GETDATE()) AS 'AGE'
+FROM Resident AS R INNER JOIN InsulationOfAResident AS IOR ON R.residentID = IOR.residentID	INNER JOIN SickResidentTracking	
+	AS SRT ON SRT.residentID = IOR.residentID
+WHERE SRT.trackDateTime < IOR.StartDateTime
+
+
+/* QUERY NUM 17 - Return the ID, full name, and age of residents who were in isolation after being sick 
+and before getting sick again.
+*/
+SELECT R.residentID, R.residentFirstName + ' ' + R.residentSurName AS	
+     'FullName', DATEDIFF(YEAR, R.residentBirthDate, GETDATE()) AS 'AGE'
+FROM Resident AS R INNER JOIN InsulationOfAResident AS IOR ON R.residentID = IOR.residentID	INNER JOIN SickResidentTracking	
+	AS SRT ON SRT.residentID = IOR.residentID INNER JOIN InsulationOfAResident AS IOR2 ON R.residentID = IOR2.residentID
+WHERE SRT.trackDateTime < IOR.StartDateTime AND SRT.trackDateTime > IOR2.StartDateTime
+
+
+-- QUERY NUM 18 - Return the business numbers of businesses that do not have any nearby businesses.
+SELECT B.businessNum
+FROM Business AS B
+EXCEPT 
+SELECT N.businessNum1
+FROM Near AS N
+UNION
+SELECT B.businessNum
+FROM Business AS B
+EXCEPT 
+SELECT N.businessNum2
+FROM Near AS N
+
+--#SOLUTION 2
+SELECT B.businessNum
+FROM Business AS B LEFT JOIN NEAR AS N ON (N.businessNum1 = B.businessNum AND N.businessNum2 = B.businessNum)
+WHERE N.businessNum1 IS NULL AND N.businessNum2 IS NULL
+
+
+-- QUERY NUM 19 - Return the ID, full name, and age of residents who do not have any pre-existing Diseases.
+SELECT R.residentID, R.residentFirstName + ' ' + R.residentSurName AS	
+     'FullName', DATEDIFF(YEAR, R.residentBirthDate, GETDATE()) AS 'AGE'
+FROM Resident AS R LEFT JOIN ResidentDiseases AS RD ON RD.residentID = R.residentID
+WHERE RD.residentID IS NULL
+
